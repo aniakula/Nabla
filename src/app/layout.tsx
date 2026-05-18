@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   title: "Nabla — Open education for everyone",
   description:
     "Learn, teach, and contribute to an open curriculum library. Built for students and instructors K–college.",
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({

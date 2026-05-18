@@ -1,30 +1,26 @@
--- Run this in the Supabase SQL Editor (or via supabase db push)
+-- Run this in Supabase SQL Editor if signup still fails with
+-- "Database error saving new user"
 
-create table public.profiles (
-  id uuid primary key references auth.users (id) on delete cascade,
-  display_name text,
-  is_instructor boolean not null default false,
-  active_mode text not null default 'student' check (active_mode in ('student', 'instructor')),
-  subscription_tier text not null default 'free' check (subscription_tier in ('free', 'open_library', 'enterprise')),
-  onboarding_completed boolean not null default false,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+-- 1. Align column name: can_act_as_instructor → is_instructor (if needed)
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'profiles'
+      and column_name = 'can_act_as_instructor'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'profiles'
+      and column_name = 'is_instructor'
+  ) then
+    alter table public.profiles
+      rename column can_act_as_instructor to is_instructor;
+  end if;
+end $$;
 
-alter table public.profiles enable row level security;
-
-create policy "Users can read own profile"
-  on public.profiles for select
-  using (auth.uid() = id);
-
-create policy "Users can update own profile"
-  on public.profiles for update
-  using (auth.uid() = id);
-
-create policy "Users can insert own profile"
-  on public.profiles for insert
-  with check (auth.uid() = id);
-
+-- 2. Recreate trigger function (must match is_instructor column)
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -61,6 +57,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
+-- 3. Permissions (common fix for auth trigger failures)
 grant usage on schema public to postgres, anon, authenticated, service_role;
 grant all on public.profiles to postgres, service_role;
 grant select, insert, update on public.profiles to authenticated;

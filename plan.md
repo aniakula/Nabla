@@ -182,7 +182,7 @@ Shared TypeScript types in `types/curriculum.ts` (frontend + API).
 profiles (
   id uuid PK references auth.users,
   display_name text,
-  can_act_as_instructor boolean default false,
+  is_instructor boolean default false,
   active_mode text check (active_mode in ('student', 'instructor')),
   subscription_tier text,  -- 'free' | 'open_library' | 'enterprise'
   onboarding_completed boolean default false,
@@ -206,7 +206,7 @@ Redirect users with incomplete onboarding away from `/app/*` to `/onboarding`.
 ### Instructor toggle
 
 - API: `PATCH /api/profile/mode` → updates `active_mode`
-- UI: show instructor navigation only when `can_act_as_instructor` AND `active_mode = 'instructor'`
+- UI: show instructor navigation only when `is_instructor` AND `active_mode = 'instructor'`
 - All instructors always have student capabilities in student mode
 
 ### Middleware
@@ -486,7 +486,7 @@ Build in order. Each phase ends with something testable on Vercel preview + Supa
 | Step | Task |
 |------|------|
 | 1.1 | Onboarding UI wizard (student / instructor / both) |
-| 1.2 | `PATCH /api/onboarding` — save steps, set `can_act_as_instructor`, `age_band` |
+| 1.2 | `PATCH /api/onboarding` — save steps, set `is_instructor`, `age_band` |
 | 1.3 | Middleware: redirect incomplete onboarding to `/onboarding` |
 | 1.4 | Instructor mode toggle — `PATCH /api/profile/mode` |
 | 1.5 | App shell: nav differs by `active_mode` |

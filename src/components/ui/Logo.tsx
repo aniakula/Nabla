@@ -1,26 +1,36 @@
+import Image from "next/image";
 import Link from "next/link";
+import nablaLogo from "./Nabla_logo.png";
+
+const imageSizes = {
+  sm: 32,
+  md: 40,
+  lg: 56,
+} as const;
 
 export function Logo({ size = "md" }: { size?: "sm" | "md" | "lg" }) {
-  const sizes = {
-    sm: "text-xl gap-1.5",
-    md: "text-2xl gap-2",
-    lg: "text-4xl gap-3",
-  };
+  const px = imageSizes[size];
+  const showWordmark = size !== "sm";
 
   return (
     <Link
       href="/"
-      className={`inline-flex items-center font-display font-bold tracking-tight ${sizes[size]}`}
+      className="inline-flex items-center gap-2.5 font-display font-bold tracking-tight"
+      aria-label="Nabla home"
     >
-      <span
-        className="flex h-9 w-9 items-center justify-center rounded-xl border-2 border-ink bg-lavender font-mono text-sm shadow-cartoon-sm"
-        aria-hidden
-      >
-        ∇
-      </span>
-      <span>
-        Nabla<span className="text-coral">.</span>
-      </span>
+      <Image
+        src={nablaLogo}
+        alt=""
+        width={px}
+        height={px}
+        className="rounded-lg object-contain"
+        priority={size === "lg"}
+      />
+      {showWordmark && (
+        <span className={size === "lg" ? "text-4xl" : "text-2xl"}>
+          Nabla<span className="text-coral">.</span>
+        </span>
+      )}
     </Link>
   );
 }

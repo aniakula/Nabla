@@ -52,7 +52,7 @@ export default function SignupPage() {
       options: {
         data: {
           display_name: displayName,
-          can_act_as_instructor: meta.can_act_as_instructor,
+          is_instructor: meta.is_instructor,
           active_mode: meta.active_mode,
           onboarding_completed: meta.onboarding_completed,
         },
@@ -69,7 +69,7 @@ export default function SignupPage() {
       const { error: profileError } = await supabase.from("profiles").upsert({
         id: data.user.id,
         display_name: displayName,
-        can_act_as_instructor: meta.can_act_as_instructor,
+        is_instructor: meta.is_instructor,
         active_mode: meta.active_mode,
         onboarding_completed: true,
         updated_at: new Date().toISOString(),

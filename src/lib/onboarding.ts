@@ -22,13 +22,13 @@ export function clearPendingRole(): void {
 export function roleToProfileMeta(role: AccountRole) {
   if (role === "instructor") {
     return {
-      can_act_as_instructor: true,
+      is_instructor: true,
       active_mode: "student" as const,
       onboarding_completed: true,
     };
   }
   return {
-    can_act_as_instructor: false,
+    is_instructor: false,
     active_mode: "student" as const,
     onboarding_completed: true,
   };

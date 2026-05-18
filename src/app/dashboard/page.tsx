@@ -15,7 +15,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, can_act_as_instructor, active_mode")
+    .select("display_name, is_instructor, active_mode")
     .eq("id", user.id)
     .single();
 
@@ -24,7 +24,7 @@ export default async function DashboardPage() {
     (user.user_metadata?.display_name as string | undefined) ??
     user.email;
 
-  const isInstructor = profile?.can_act_as_instructor ?? false;
+  const isInstructor = profile?.is_instructor ?? false;
 
   return (
     <PageShell maxWidth="lg">

@@ -13,9 +13,10 @@ Open education platform — see [plan.md](./plan.md) for the full roadmap.
 2. **Supabase**
 
    - Create a project at [supabase.com](https://supabase.com)
-   - Run the SQL in `supabase/migrations/001_profiles.sql` in the SQL Editor
+   - Run the SQL in `supabase/migrations/001_profiles.sql` in the SQL Editor  
+   - If signup fails with “Database error saving new user”, run `002_fix_profiles_column.sql` too
    - Under **Authentication → Providers**, enable Email
-   - Copy project URL and anon key into `.env.local` (see `.env.local.example`)
+   - Copy project URL and **publishable** key into `.env.local` (see `.env.local.example`)
 
 3. **Run the app**
 
