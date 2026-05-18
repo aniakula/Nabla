@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-cream: #faf7f2;
+  --color-offwhite: #fffdf9;
+  --color-sand: #f4e4d4;
+  --color-peach: #ffcba4;
+  --color-coral: #ff9b71;
+  --color-ink: #2d3142;
+  --color-ink-muted: #5c6378;
+  --color-mint: #b8e8d2;
+  --color-lavender: #d4c5f9;
+  --color-sky: #b8d4f0;
+  --color-lemon: #fff3b0;
+  --color-card: #fffef9;
+  --font-display: var(--font-fredoka);
+  --font-mono: var(--font-jetbrains);
+  --shadow-cartoon: 4px 4px 0 0 #2d3142;
+  --shadow-cartoon-sm: 3px 3px 0 0 #2d3142;
+  --shadow-cartoon-lg: 6px 6px 0 0 #2d3142;
+}
+
+@layer base {
+  body {
+    @apply bg-cream text-ink antialiased;
+    background-image:
+      linear-gradient(rgba(45, 49, 66, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(45, 49, 66, 0.04) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
