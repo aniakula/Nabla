@@ -13,6 +13,10 @@
   --color-sky: #b8d4f0;
   --color-lemon: #fff3b0;
   --color-card: #fffef9;
+  --color-level-el: #ffd6d6;
+  --color-level-ms: #d4e8ff;
+  --color-level-hs: #d4f0dc;
+  --color-level-adv: #e8dcff;
   --font-display: var(--font-fredoka);
   --font-mono: var(--font-jetbrains);
   --shadow-cartoon: 4px 4px 0 0 #2d3142;
@@ -33,5 +37,29 @@
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .subsection-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(45, 49, 66, 0.35) transparent;
+    /* Room for hover lift so borders are not clipped */
+    scroll-padding-block: 0.5rem;
+  }
+
+  .subsection-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .subsection-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .subsection-scroll::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: rgba(45, 49, 66, 0.25);
+  }
+
+  .subsection-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(45, 49, 66, 0.4);
   }
 }

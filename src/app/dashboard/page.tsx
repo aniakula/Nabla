@@ -1,3 +1,5 @@
+import { GreetingWidget } from "@/components/dashboard/GreetingWidget";
+import { QuickLinksWidget } from "@/components/dashboard/QuickLinksWidget";
 import { PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/Button";
 import { createClient } from "@/lib/supabase/server";
@@ -22,39 +24,31 @@ export default async function DashboardPage() {
   const displayName =
     profile?.display_name ??
     (user.user_metadata?.display_name as string | undefined) ??
-    user.email;
+    user.email ??
+    "there";
 
   const isInstructor = profile?.is_instructor ?? false;
 
   return (
-    <PageShell maxWidth="lg">
-      <div className="rounded-3xl border-2 border-ink bg-card p-8 shadow-cartoon-lg">
+    <PageShell maxWidth="xl">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="font-mono text-sm font-semibold uppercase tracking-wider text-ink-muted">
-          You&apos;re in
+          Student dashboard
         </p>
-        <h1 className="mt-2 font-display text-4xl font-bold text-ink">
-          Hey, {displayName}! 👋
-        </h1>
-        <p className="mt-4 font-mono text-sm text-ink-muted">
-          Account type:{" "}
-          <span className="rounded-full border-2 border-ink bg-sand px-3 py-0.5 font-semibold text-ink">
-            {isInstructor ? "Instructor + Student" : "Student"}
-          </span>
-        </p>
-        {isInstructor && (
-          <p className="mt-2 font-mono text-xs text-ink-muted">
-            Active mode: {profile?.active_mode ?? "student"} (toggle coming soon)
-          </p>
-        )}
-        <p className="mt-6 font-mono text-sm leading-relaxed text-ink-muted">
-          Curriculum, classes, and the open library are on the way. For now,
-          you&apos;re set up and signed in.
-        </p>
-        <form action="/auth/signout" method="post" className="mt-8">
-          <Button type="submit" variant="secondary">
+        <form action="/auth/signout" method="post">
+          <Button type="submit" variant="ghost" className="text-base">
             Sign out
           </Button>
         </form>
+      </div>
+
+      <div className="flex min-h-[calc(100vh-12rem)] flex-col gap-5">
+        <GreetingWidget
+          displayName={displayName}
+          isInstructor={isInstructor}
+          activeMode={profile?.active_mode}
+        />
+        <QuickLinksWidget />
       </div>
     </PageShell>
   );
