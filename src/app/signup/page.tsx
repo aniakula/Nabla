@@ -53,7 +53,6 @@ export default function SignupPage() {
         data: {
           display_name: displayName,
           is_instructor: meta.is_instructor,
-          active_mode: meta.active_mode,
           onboarding_completed: meta.onboarding_completed,
         },
       },
@@ -70,7 +69,6 @@ export default function SignupPage() {
         id: data.user.id,
         display_name: displayName,
         is_instructor: meta.is_instructor,
-        active_mode: meta.active_mode,
         onboarding_completed: true,
         updated_at: new Date().toISOString(),
       });

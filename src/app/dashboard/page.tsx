@@ -1,4 +1,5 @@
 import { GreetingWidget } from "@/components/dashboard/GreetingWidget";
+import { InstructorWorkspaceWidget } from "@/components/dashboard/InstructorWorkspaceWidget";
 import { QuickLinksWidget } from "@/components/dashboard/QuickLinksWidget";
 import { PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/Button";
@@ -11,13 +12,11 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, is_instructor, active_mode")
+    .select("display_name, is_instructor")
     .eq("id", user.id)
     .single();
 
@@ -33,7 +32,7 @@ export default async function DashboardPage() {
     <PageShell maxWidth="xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <p className="font-mono text-sm font-semibold uppercase tracking-wider text-ink-muted">
-          Student dashboard
+          Dashboard
         </p>
         <form action="/auth/signout" method="post">
           <Button type="submit" variant="ghost" className="text-base">
@@ -43,11 +42,10 @@ export default async function DashboardPage() {
       </div>
 
       <div className="flex min-h-[calc(100vh-12rem)] flex-col gap-5">
-        <GreetingWidget
-          displayName={displayName}
-          isInstructor={isInstructor}
-          activeMode={profile?.active_mode}
-        />
+        <GreetingWidget displayName={displayName} isInstructor={isInstructor} />
+
+        {isInstructor && <InstructorWorkspaceWidget />}
+
         <QuickLinksWidget />
       </div>
     </PageShell>

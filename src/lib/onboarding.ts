@@ -20,16 +20,8 @@ export function clearPendingRole(): void {
 }
 
 export function roleToProfileMeta(role: AccountRole) {
-  if (role === "instructor") {
-    return {
-      is_instructor: true,
-      active_mode: "student" as const,
-      onboarding_completed: true,
-    };
-  }
   return {
-    is_instructor: false,
-    active_mode: "student" as const,
+    is_instructor: role === "instructor",
     onboarding_completed: true,
   };
 }

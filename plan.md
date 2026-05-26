@@ -680,4 +680,207 @@ Add **Inngest** or **Trigger.dev** when the AI upload pipeline exceeds serverles
 
 ---
 
-*End of plan. Update this file as decisions in §18 are resolved.*
+*End of original plan. Update this file as decisions in §18 are resolved.*
+
+---
+
+## Phase 4.5 — My Notes (Upload & AI Pipeline)
+
+> Resolved in planning session. Build after Phase 2 (taxonomy browser) is stable.
+
+---
+
+### Feature summary
+
+Users upload PDF or TXT documents, configure a question generation preset, and receive:
+1. AI-generated summarized notes organized by topic — saved as markdown to Supabase Storage.
+2. A set of typed questions (MCQ, True/False, FRQ, and/or Flashcard) — saved as JSON rows in the DB.
+
+Both are private by default. Sharing to the open library is planned for a future sub-phase.
+
+---
+
+### Confirmed design decisions
+
+| Area | Decision |
+|------|----------|
+| **File types (v1)** | PDF and plain-text (`.txt`) only. Images/DOCX deferred. |
+| **File size limits** | 10 MB per file, 25 MB per upload batch. Flag if extracted text > ~80 K characters and truncate gracefully. |
+| **Upload batch → notes** | Multiple files in one batch produce **one merged note set**, topics split by AI. |
+| **Raw file retention** | Delete raw uploads from Storage after text extraction. Only store the generated markdown. |
+| **Processing model** | Synchronous route handler with `export const maxDuration = 60` (Vercel Hobby ceiling). Fallback to async job table + cron if needed. |
+| **Notes editing** | Read-only markdown viewer in v1. In-app editor (TipTap or similar) added in Phase 5. Download as `.md` always available. |
+| **Question count** | User-configurable per type (0–20 each). AI stops early if material is exhausted rather than generating low-quality questions. |
+| **Question types** | User selects via checkboxes: MCQ, True/False, FRQ, Flashcard. |
+| **Taxonomy tagging** | User picks: genre (topic), subtopic, and level band **range** before upload. All fields accept "Other" (if genre = Other, subtopic auto = Other). |
+| **Level band range** | Stored as comma-separated string: e.g. `"high_school,advanced"`. Rendered as a discrete dual-thumb range bar in the UI. |
+| **Visibility** | All generated content is `is_public = false` by default. Sharing flow deferred. |
+| **AI provider strategy** | Vercel AI SDK (`ai` package) — provider-swappable with one line. Groq (`@ai-sdk/groq`) for free dev/testing; OpenAI or Anthropic for production. |
+| **Flashcard schema** | `{ type: 'flashcard', id: string, front: string, back: string }` — stored as JSON alongside other question types. |
+
+---
+
+### New DB tables
+
+```sql
+-- One note set per upload batch
+note_sets (
+  id              uuid PK default gen_random_uuid(),
+  user_id         uuid → profiles.id ON DELETE CASCADE,
+  title           text NOT NULL,               -- user-supplied name
+  topic_slug      text,                        -- genre slug or 'other'
+  subtopic_slug   text,                        -- subsection slug or 'other'
+  level_band      text,                        -- comma-separated range, e.g. 'high_school,advanced'
+  markdown_path   text,                        -- Supabase Storage path for generated .md
+  status          text DEFAULT 'processing',   -- 'processing' | 'ready' | 'failed'
+  is_public       boolean DEFAULT false,
+  source_filenames text[],                     -- original filenames for display
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+)
+
+-- Individual questions belonging to a note set
+note_questions (
+  id              uuid PK default gen_random_uuid(),
+  note_set_id     uuid → note_sets.id ON DELETE CASCADE,
+  user_id         uuid → profiles.id ON DELETE CASCADE,
+  type            text CHECK (type IN ('mcq', 'true_false', 'frq', 'flashcard')),
+  question_data   jsonb NOT NULL,             -- typed question object (see schema below)
+  is_public       boolean DEFAULT false,
+  created_at      timestamptz DEFAULT now()
+)
+
+-- Processing jobs (for async fallback + status polling)
+note_processing_jobs (
+  id              uuid PK default gen_random_uuid(),
+  note_set_id     uuid → note_sets.id ON DELETE CASCADE,
+  user_id         uuid → profiles.id ON DELETE CASCADE,
+  status          text DEFAULT 'pending',     -- 'pending'|'extracting'|'generating'|'done'|'failed'
+  error_message   text,
+  config          jsonb,                      -- { mcq_count, tf_count, frq_count, flashcard_count, topic_slug, subtopic_slug, level_band }
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+)
+```
+
+---
+
+### Question JSON schema (TypeScript / Zod)
+
+```typescript
+// MCQ
+{ type: 'mcq', id: string, question: string,
+  options: { id: string, text: string }[],   // 3–5 options
+  correctOptionId: string, explanation?: string }
+
+// True/False
+{ type: 'true_false', id: string, statement: string,
+  answer: boolean, explanation?: string }
+
+// FRQ
+{ type: 'frq', id: string, question: string,
+  sampleAnswer?: string }
+
+// Flashcard
+{ type: 'flashcard', id: string, front: string, back: string }
+```
+
+---
+
+### Notes markdown structure (AI output)
+
+```typescript
+{
+  title: string,                          // AI-generated title
+  topics: { heading: string, content: string }[], // per-topic sections
+  markdownFull: string,                   // combined final markdown
+  questions: (MCQ | TrueFalse | FRQ | Flashcard)[],
+}
+```
+
+---
+
+### AI provider strategy
+
+| Phase | Provider | Package | Cost |
+|-------|----------|---------|------|
+| Dev / free testing | Groq | `@ai-sdk/groq` | Free tier (~14 K req/day) |
+| Prod (default) | OpenAI | `@ai-sdk/openai` | Pay-per-token |
+| Prod (alt) | Anthropic | `@ai-sdk/anthropic` | Pay-per-token |
+| Mock | USE_MOCK_AI=true | fixture JSON | $0 |
+
+Swap the model in **one line**. The prompt, Zod schema, and route handler never change.
+
+Use `generateObject()` from the Vercel AI SDK with the Zod schema to force valid structured JSON output — no regex parsing needed.
+
+---
+
+### Processing pipeline
+
+```
+POST /api/notes/upload (maxDuration: 60)
+  1. Validate files (type, per-file 10 MB, batch 25 MB)
+  2. Upload raw files to Storage: uploads/{userId}/{jobId}/
+  3. Create note_set row (status: 'processing') + note_processing_job row
+  4. For each file: extract text
+       PDF  → pdf-parse
+       TXT  → read buffer as UTF-8
+  5. Concatenate extracted text; truncate to ~80 K chars with warning
+  6. Build system prompt with: text, config (question counts/types), topic context
+  7. generateObject(model, NotesOutputSchema, prompt)
+  8. Save markdownFull to Storage: notes/{userId}/{noteSetId}.md
+  9. Delete raw uploads from Storage
+ 10. Bulk-insert note_questions rows
+ 11. Update note_set status → 'ready'; update job status → 'done'
+ 12. Return { noteSetId }
+
+GET /api/notes/jobs/[jobId]   — poll status (for future async fallback)
+GET /api/notes                — list user's note sets
+GET /api/notes/[noteSetId]    — fetch note set + questions
+GET /api/notes/[noteSetId]/download — stream markdown as file download
+```
+
+---
+
+### UI structure
+
+```
+/notes                       → redirect to /notes/all_notes
+/notes/layout.tsx            → auth check + PageShell + NotesTabs
+/notes/all_notes             → Google Docs-style grid; first card = dotted + (opens UploadModal)
+/notes/notes_by_topic        → topic accordion (CURRICULUM_TOPICS + Other); each section lists note set cards
+/notes/[noteSetId]           → read-only markdown viewer + question cards + download button
+```
+
+#### Upload modal flow (2-step wizard)
+
+**Step 1 — Upload files**
+- Source-type tab bar: Document (active), Text, others greyed out (coming soon)
+- Drag-and-drop zone accepting `.pdf` and `.txt`
+- File list with remove buttons
+- Size errors shown inline
+
+**Step 2 — Configure**
+- Note set title (required)
+- Genre selector (CURRICULUM_TOPICS slugs + "Other")
+- Subtopic selector (populated from selected genre; "Other" always available)
+- Level band range picker (discrete dual-thumb bar: Elementary → Middle → High School → Advanced)
+- Question generation checkboxes + count inputs (MCQ 0–20, True/False 0–20, FRQ 0–20, Flashcard 0–20)
+- "Process notes" button → triggers POST /api/notes/upload → loading state → redirect to /notes/[noteSetId]
+
+---
+
+### Implementation steps (Phase 4.5)
+
+| Step | Task |
+|------|------|
+| 4.5.1 | DB migration: `note_sets`, `note_questions`, `note_processing_jobs` tables + RLS |
+| 4.5.2 | Supabase Storage buckets: `note-uploads` (private, temp) and `note-markdown` (private) |
+| 4.5.3 | Install `pdf-parse`, `ai`, `@ai-sdk/groq`, `zod` |
+| 4.5.4 | `src/types/notes.ts` — TypeScript types + Zod schemas for all question types |
+| 4.5.5 | `POST /api/notes/upload` — full pipeline route (with USE_MOCK_AI path for free testing) |
+| 4.5.6 | `GET /api/notes`, `GET /api/notes/[noteSetId]`, `GET /api/notes/[noteSetId]/download` |
+| 4.5.7 | `/notes/[noteSetId]` — read-only markdown viewer + question card components |
+| 4.5.8 | Playwright: upload a TXT fixture → notes and questions appear correctly |
+
+> Frontend UI (pages, layout, upload modal) is built before the backend. See §17 for the frontend-first steps already completed.
